@@ -38,13 +38,13 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
 
 **Name:** unassigned  |  **Branch:** `feature/passenger-interface`  |  **Interface:** `/passenger`
 
-**Tools:** HTML, CSS, JavaScript, Fetch API, browser WebSocket, Python/FastAPI, pytest, VS Code, GitHub. Use the current buildless frontend; no React migration is required.
+### Frontend section
 
-**Reuse existing:** taxi/static/index.html, taxi/static/app.js, GET /api/stops, POST /api/trips, GET /api/trips/{id}, POST /api/trips/{id}/cancel.
+Build the destination and booking screen, cancellation button and trip progress. Show loading, rejected requests, stale updates and confirmed arrival.
 
-**Planned file ownership:** taxi/static/passenger.html; taxi/static/passenger.js; taxi/routers/passenger.py; tests/test_passenger.py. These files and the route do not exist yet.
+**Frontend tools:** HTML, CSS, JavaScript, Fetch API, browser WebSocket and shared design tokens.
 
-**Dependency:** Needs Member 2 mission-state contract and Member 3 passenger authentication. Do not publish a shared operator token to passengers.
+**Frontend files:** taxi/static/passenger.html and passenger.js (planned).
 
 - [ ] **P1-01 Build the booking screen** - Show vehicle current stop, destination selector, trip request, cancellation and active-trip card using shared design tokens.
   - Done when: Screen works at phone and desktop widths, with loading, error and disconnected states.
@@ -58,6 +58,17 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
 - [ ] **P1-04 Add cancellation** - Request cancellation of the active owned trip and show the server result.
   - Done when: Cancelled trip remains terminal in history; UI never implies physical stopping from request receipt alone.
   - PR/evidence: _add link_
+
+### Backend section
+
+Integrate the passenger identity/session supplied by Member 3, apply it to passenger requests and cancellation, and test the complete passenger trip flow. Coordinate trip rules with Member 2; do not build a second authentication system.
+
+**Backend tools:** Python, FastAPI, Pydantic and pytest; use Member 3's shared authentication and ownership rules.
+
+**Backend / firmware files:** taxi/routers/passenger.py and tests/test_passenger.py (planned); reuse existing trip APIs.
+
+Backend integration, verification and handoff checklist:
+
 - [ ] **P1-05 Integrate passenger identity** - Work with Member 3 on login/session and ownership. Use operator token only in local development.
   - Done when: Passenger cannot use operator/admin controls or read/cancel another passenger trip.
   - PR/evidence: _add link_
@@ -65,21 +76,38 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
   - Done when: CI passes and Member 2 can demonstrate a passenger-originated simulated mission.
   - PR/evidence: _add link_
 
+**Dependency:** Needs Member 2 mission-state contract and Member 3 passenger authentication. Do not publish a shared operator token to passengers.
+
+### Layman explanation section
+
+You build the part the passenger uses to ask for a ride. Think of it as the booking counter: the screen asks where the passenger wants to go, and the code behind it sends the request to the right service. It keeps the passenger informed and lets them cancel their own ride. You do not decide how much power the motors receive. Example: someone selects Library and sees the trip progress until arrival is confirmed.
+
 ## Member 2 - Operator and mission management
 
 **Name:** unassigned  |  **Branch:** `feature/operator-interface`  |  **Interface:** `/operator`
 
-**Tools:** HTML/CSS/JavaScript/SVG, Python 3.10+, FastAPI, Pydantic, asyncio, route graph, SQLite event hooks, pytest, Ruff, GitHub Actions and Codex.
+### Frontend section
 
-**Reuse existing:** taxi/supervisor.py; taxi/navigation.py; taxi/api.py; operator stop/rearm endpoints; simulation reset/hazards; existing dashboard.
+Build the operator's route map, active-trip panel, speed/state/fault displays and authorized stop/rearm controls. Keep simulator reset and fault injection clearly labelled.
 
-**Planned file ownership:** taxi/static/operator.html; taxi/static/operator.js; taxi/routers/operator.py; shared route registration in taxi/api.py. New page/router files are planned.
+**Frontend tools:** HTML, CSS, JavaScript, SVG, Fetch API, browser WebSocket and shared design tokens.
 
-**Dependency:** Needs Member 4 validated device data before real movement and Member 3 authorization rules. Shared control behavior must not bypass Arduino safety.
+**Frontend files:** taxi/static/operator.html and operator.js (planned); extract the current dashboard.
 
 - [ ] **P2-01 Split the operator dashboard** - Move existing map, current mission, state, speed, stop/rearm and simulator controls into its own screen without breaking the demo.
   - Done when: Operator screen preserves the working A-to-B simulation.
   - PR/evidence: _add link_
+
+### Backend section
+
+Maintain the mission state machine and route planning; coordinate API modules and common payloads. Preserve one active trip, latched faults, explicit recovery and fresh inputs. Prepare interfaces for real perception and telemetry after hardware checks.
+
+**Backend tools:** Python 3.10+, FastAPI, Pydantic, asyncio, route graph, supervisor, pytest, Ruff and GitHub Actions.
+
+**Backend / firmware files:** taxi/supervisor.py, navigation.py and api.py (existing); taxi/routers/operator.py (planned).
+
+Backend integration, verification and handoff checklist:
+
 - [ ] **P2-02 Agree shared contracts** - Document trip statuses, role permissions, errors, source labels, freshness and API payloads with the team.
   - Done when: All four interfaces use the same stop/trip IDs and state meanings.
   - PR/evidence: _add link_
@@ -96,21 +124,38 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
   - Done when: One passenger request can be monitored in operator/diagnostics and found in admin records.
   - PR/evidence: _add link_
 
+**Dependency:** Needs Member 4 validated device data before real movement and Member 3 authorization rules. Shared control behavior must not bypass Arduino safety.
+
+### Layman explanation section
+
+You build the control room and the trip manager behind it. The operator sees what the taxi is doing, while your code decides whether a trip can start, which approved route to follow and when it must stop. You coordinate the other members' pieces so they behave as one system. Example: if a fault happens during a journey, the screen explains it and the mission remains stopped until the required checks and recovery action are completed.
+
 ## Member 3 - Administration, accounts and records
 
 **Name:** unassigned  |  **Branch:** `feature/admin-interface`  |  **Interface:** `/admin`
 
-**Tools:** HTML/CSS/JavaScript, Python/FastAPI, SQLite and SQL, Pydantic, pytest, Ruff, OpenAPI docs and GitHub. Select a maintained password-hashing/session library before implementing accounts.
+### Frontend section
 
-**Reuse existing:** taxi/storage.py; SQLite trips/events; GET /api/trips; GET /api/events; development operator-token protection.
+Build the trip history, event logs, search/filter and detail views. Add user, stop and route management screens as their validated backend functions become available.
 
-**Planned file ownership:** taxi/static/admin.html; taxi/static/admin.js; taxi/routers/admin.py; taxi/auth.py; database migration scripts and access-control tests. These modules are planned.
+**Frontend tools:** HTML, CSS, JavaScript, Fetch API, shared tables/forms and design tokens.
 
-**Dependency:** Coordinate schema changes with Member 2 and passenger identity with Member 1. Payment/fleet features are later scope.
+**Frontend files:** taxi/static/admin.html and admin.js (planned).
 
 - [ ] **P3-01 Build trip and event views** - Show stored trips and events, detail rows and filters. Start from existing recent-record endpoints.
   - Done when: View shows real stored statuses; no invented counts or hard-coded business metrics.
   - PR/evidence: _add link_
+
+### Backend section
+
+Build shared accounts, sessions and passenger/operator/admin permissions. Enforce trip ownership; maintain database migrations, records, reporting, backup/restore and validated configuration updates. Supply the access contract to Members 1 and 2.
+
+**Backend tools:** Python, FastAPI, SQLite/SQL, Pydantic, pytest, Ruff and a reviewed password/session library selected before account implementation.
+
+**Backend / firmware files:** taxi/storage.py (existing); taxi/routers/admin.py, taxi/auth.py and migration/access-control tests (planned).
+
+Backend integration, verification and handoff checklist:
+
 - [ ] **P3-02 Design accounts and roles** - Define passenger, operator and admin permissions; implement secure identity/session handling and authorization.
   - Done when: Unauthenticated and wrong-role requests fail; passenger credentials never grant operator power.
   - PR/evidence: _add link_
@@ -127,21 +172,38 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
   - Done when: Passenger and operator integrations pass role/ownership tests.
   - PR/evidence: _add link_
 
+**Dependency:** Coordinate schema changes with Member 2 and passenger identity with Member 1. Payment/fleet features are later scope.
+
+### Layman explanation section
+
+You build the office and record book for the taxi service. The screen helps staff find past trips and manage approved information. The code behind it remembers who each person is, what they are allowed to do and which trip belongs to them. Example: a passenger can see their own ride, but cannot open another passenger's trip or use an operator's controls. Administrators can review records through authorized screens.
+
 ## Member 4 - Vehicle diagnostics, firmware and communication
 
 **Name:** unassigned  |  **Branch:** `feature/diagnostics-interface`  |  **Interface:** `/diagnostics`
 
-**Tools:** HTML/CSS/JavaScript, Python telemetry parser, optional PySerial for direct USB tests, Arduino C/C++, PlatformIO or Arduino IDE, esp_camera, local HTTP, UART, camera_probe.py and hardware-team wiring review.
+### Frontend section
 
-**Reuse existing:** firmware/esp32_cam/; firmware/arduino/; scripts/camera_probe.py; docs/HARDWARE.md and docs/PROTOCOL.md. Firmware is bench-only and unverified.
+Build the camera, sensor, board connection and fault panels. Show data source, measurement age and validity; distinguish simulation from real devices and missing data.
 
-**Planned file ownership:** taxi/static/diagnostics.html; taxi/static/diagnostics.js; taxi/communication/ adapter/parser modules; protocol timeout tests. New modules/routes are planned.
+**Frontend tools:** HTML, CSS, JavaScript, camera/status panels, Fetch API, browser WebSocket and shared design tokens.
 
-**Dependency:** Blocked on exact hardware facts and successful board builds. Never enable physical outputs from guessed pins or simulated thresholds.
+**Frontend files:** taxi/static/diagnostics.html and diagnostics.js (planned).
 
 - [ ] **P4-01 Build diagnostics with honest source labels** - Display simulation/device source, sensor age, validity, camera state, connection and stop reasons; missing hardware is unavailable.
   - Done when: No absent sensor is shown as a fabricated healthy value.
   - PR/evidence: _add link_
+
+### Backend section - device firmware and hardware integration
+
+Confirm hardware and wiring, compile and bench-test boards, read actual sensors and implement the read-only telemetry adapter. Later implement the tested motor interface, local watchdog and command freshness with Member 2. Board firmware is part of this workstream, separate from the laptop web backend.
+
+**Backend tools:** Python telemetry parser/adapter, Arduino C/C++, PlatformIO or Arduino IDE, esp_camera, local HTTP, UART and optional PySerial for direct USB bench tests.
+
+**Backend / firmware files:** firmware/esp32_cam/, firmware/arduino/ and scripts/camera_probe.py (existing starters); taxi/communication/ and parser/timeout tests (planned).
+
+Backend integration, verification and handoff checklist:
+
 - [ ] **P4-02 Confirm actual hardware** - Record camera/Arduino models, driver, steering, power/logic levels, UART pins, sensor/feedback parts and independent stop wiring.
   - Done when: Hardware team confirms the wiring record before board-specific output code.
   - PR/evidence: _add link_
@@ -157,6 +219,12 @@ Proposed shared files: `taxi/static/shared.css`, `taxi/static/api-client.js` and
 - [ ] **P4-06 Integrate measured feedback** - Provide tested telemetry/camera interfaces to Member 2 and run controlled-course checks only after the local stop gate passes.
   - Done when: Stopping behavior and timing are measured; failures lead to the defined stopped state.
   - PR/evidence: _add link_
+
+**Dependency:** Blocked on exact hardware facts and successful board builds. Never enable physical outputs from guessed pins or simulated thresholds.
+
+### Layman explanation section
+
+You build the vehicle's health screen and the connections to its electronics. Think of your screen as the dashboard used by a mechanic: it shows what the camera and sensors are reporting and whether the boards are connected. Your firmware and communication code bring those readings to the laptop. Later, after testing the actual hardware, you connect movement commands to the motor controls. Example: a disconnected sensor must show unavailable rather than a made-up safe distance.
 
 ## First working session - do this in order
 
