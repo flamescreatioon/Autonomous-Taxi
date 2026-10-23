@@ -1,4 +1,4 @@
-# Build with Codex — milestone plan
+# Build with probix — milestone plan
 
 ## M0 · Delivered foundation
 - Python package, validated backend, dashboard, SQLite history and read-only telemetry.
