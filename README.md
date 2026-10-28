@@ -47,9 +47,32 @@ All positions, distances and fault inputs in the dashboard are simulated. Speed 
 | Dashboard | Route map, trips, status, fault injection, stop/rearm/reset, history | Passenger accounts and real vehicle telemetry |
 | Backend | Validated API, operator token, read-only telemetry WebSocket, SQLite | User roles, deployment authentication, dispatch |
 | Brain | Route graph, deterministic simulated motion, stale-input gates and latched faults | Real perception, localization, closed-loop control |
-| ESP32-CAM | AI Thinker camera capture + read-only UART telemetry + stop-request firmware starter | Confirm board, pins, credentials; bench test |
-| Arduino | Uno bench parser; rejects motion, reports sensors unavailable | Confirm board/driver; implement real sensors and motor safety |
+| Protocol | Newline-ASCII bench protocol only, on the ESP32-CAM relay | Binary COBS + CRC-8 framing and versioned motion frames (specified in [docs/PROTOCOL-v2.md](docs/PROTOCOL-v2.md), not yet implemented) |
+| Perception | None — the dashboard renders the route graph, not camera frames | Frame source, detector backend, costmap and VFH scoring |
+| Comms | Supervisor-backed simulated telemetry over the existing WebSocket | Read-only device telemetry adapter with bounded parsing |
+| ESP32-CAM | AI Thinker camera capture + read-only UART telemetry + stop-request firmware starter. **Compiles.** | Legacy bench fallback; confirm board, pins, credentials |
+| Arduino | Uno bench parser only — newline-ASCII line handling, no sensors, no motors. **Compiles.** | Sonar FSM, subsumption arbiter, watchdog, kinematics — no actuator pins until the board and driver are confirmed |
+| ESP32-S3 | Not present in this repository | Primary edge target: FreeRTOS tasks, camera DMA, WS client, UART bridge |
 | AI models | Optional vision dependency group; no weights bundled | Benchmark/select a commercially suitable checkpoint |
+
+## The three-tier target architecture
+
+The next version moves control across three tiers:
+
+| Tier | Hardware | Owns |
+|---|---|---|
+| 1. Perception & Planning | Laptop (Python) | camera → detections → costmap → VFH → `(v, ω)` |
+| 2. Edge Gateway | ESP32-S3 (FreeRTOS) | camera DMA, WebSocket client, telemetry forwarding, UART bridge |
+| 3. Actuation & Safety | Arduino Uno R3 | sonar FSM, subsumption arbiter, watchdog, motor PWM |
+
+**Safety authority flows downward only.** The laptop may *request* motion; only the Arduino may
+*grant* it. Losing the laptop or the Wi-Fi must always resolve to stop.
+
+This is specified in **[docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md)** and
+**[docs/PROTOCOL-v2.md](docs/PROTOCOL-v2.md)**, with the decisions recorded in
+**[docs/adr/](docs/adr/)**. **None of these tiers is implemented yet** — the documents are a
+specification to build against, not a description of existing code. The current tree contains
+no protocol, perception, planning or mission modules, and no ESP32-S3 target.
 
 ## Project layout
 
@@ -61,21 +84,44 @@ taxi/
   storage.py             SQLite trips and events
   static/                Browser dashboard (no Node build needed)
 firmware/
-  esp32_cam/             AI Thinker camera / UART bench starter
-  arduino/               Uno serial bench starter; no actuator pins
+  esp32_cam/             Bench starter: AI Thinker camera / UART relay
+  arduino/               Uno bench starter: newline-ASCII line parser
 scripts/
   setup.ps1              Optional Windows installer
   camera_probe.py        Authenticated JPEG capture test
 tests/                   Supervisor and API tests
-docs/                    Architecture, protocol, hardware and Codex roadmap
+docs/                    Architecture, protocol, ADRs, hardware, validation, roadmap
+.agents/skills/          Six project skills — core, hardware, perception, passenger,
+                         operator, admin/diagnostics
 ```
+
+## Project skills
+
+`.agents/skills/` holds six project-scoped skills, one per workstream plus the shared core. Each
+carries the invariants for its area and the file-ownership map, so parallel work does not
+collide:
+
+| Skill | Covers |
+|---|---|
+| `taxi-core` | Mission state, latched faults, terminal statuses, the non-negotiable invariants |
+| `taxi-hardware` | ESP32-S3 / Arduino bench work, framing contract, hardware confirmation checklist |
+| `taxi-perception` | Frames, detectors, costmap, freshness, the "absence of evidence" rule |
+| `taxi-passenger` | Booking, live progress, arrival promise, cancellation, ownership |
+| `taxi-operator` | Supervision, stop/rearm/reset semantics, shared contracts, design tokens |
+| `taxi-admin-diagnostics` | Accounts, roles, migrations, honest telemetry display |
 
 ## Checks
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+mkdir -p runtime/pytest-tmp
+.\.venv\Scripts\python.exe -m pytest -q --basetemp=runtime/pytest-tmp
 .\.venv\Scripts\ruff.exe check .
+node --check taxi/static/app.js
 ```
+
+`--basetemp` is required on machines where pytest's default temp directory is not writable;
+without it the `tmp_path` test in `tests/test_supervisor.py` errors with `PermissionError`. See
+[docs/VALIDATION.md](docs/VALIDATION.md) for the verified results of each check.
 
 ## Clone from GitHub
 

@@ -60,7 +60,7 @@ esp_err_t telemetry(httpd_req_t *req) {
 esp_err_t stopRequest(httpd_req_t *req) {
   if (!authorized(req)) return ESP_OK;
   if (RELAY_RX_PIN < 0 || RELAY_TX_PIN < 0)
-    return httpd_resp_send_err(req, HTTPD_503_SERVICE_UNAVAILABLE, "UART not configured");
+    return httpd_resp_send_err(req, HTTPD_501_METHOD_NOT_IMPLEMENTED, "UART not configured");
   relay.print("STOP\n");
   return httpd_resp_send(req, "Stop requested; physical stop NOT confirmed", HTTPD_RESP_USE_STRLEN);
 }

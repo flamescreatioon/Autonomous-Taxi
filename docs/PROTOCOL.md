@@ -1,5 +1,11 @@
 # Protocol v0.1 and future motion contract
 
+> **This document describes the v0.1 bench protocol — what the firmware implements and accepts
+> today.** The v0.2 binary protocol (COBS framing with CRC-8, versioned motion frames, end-to-end
+> freshness) is specified in **[PROTOCOL-v2.md](PROTOCOL-v2.md)** but **not implemented**: there is
+> no `taxi/protocol/` package, no `firmware/esp32_s3/` target, and no binary framing code on
+> either board. The newline-ASCII protocol below is what actually runs, on both boards.
+
 ## Implemented bench protocol
 
 UART: 115200 baud, 8N1, newline-terminated ASCII. Arduino receive frames have a maximum of 79 non-newline bytes. Oversized frames are discarded through the next newline. The ESP32 retains at most 255 characters per telemetry line; oversized lines are discarded. Processing per loop is bounded.

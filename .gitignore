@@ -13,3 +13,4 @@ secrets.h
 *.pt
 *.onnx
 recordings/
+.zcode/

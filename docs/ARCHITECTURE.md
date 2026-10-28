@@ -1,5 +1,12 @@
 # Architecture and ownership
 
+> **This document describes v0.1 — what the code actually does today.**
+> The v0.2 three-tier target architecture (laptop perception/planning → ESP32-S3 edge gateway →
+> Arduino Uno actuation and safety) is specified in **[ARCHITECTURE-v2.md](ARCHITECTURE-v2.md)**,
+> with the decisions recorded in [`adr/`](adr/). **None of the v0.2 tiers is implemented yet** —
+> there is no `taxi/perception/`, `taxi/comms/` or `taxi/planning/` package, no `firmware/esp32_s3/`
+> target, and no binary protocol code.
+
 ## Running laptop application
 
 The FastAPI lifespan creates one Store and one Supervisor. A 20 Hz asynchronous task advances simulation; a read-only WebSocket publishes snapshots at 5 Hz. Request handlers do not await while mutating the core, so mutations are serialized on the event loop. SQLite writes are synchronous and suitable only for this small prototype; a storage error faults motion in memory. A blocked event loop faults an active simulation when its next tick exceeds the configured timing window.
@@ -41,6 +48,12 @@ flowchart TD
 ESP32 exposes authenticated `/capture`, `/telemetry`, and `/stop` on local HTTP. There is no command stream, continuous MJPEG or motion endpoint yet. Python camera_probe tests one image. The application simulator is intentionally independent of the board starters.
 
 Camera work must eventually run outside the supervisor loop with bounded latest-frame queues. A real adapter must preserve freshness through every hop, reject replay, separate acknowledgements from measured stopping, and leave Arduino safety independent of the host.
+
+**This is specified but not yet built.** The bounded latest-frame queue and the freshness rule
+are to live in `taxi/perception/`; the read-only device adapter and the shared health assessment
+in `taxi/comms/`; the occupancy grid, the VFH candidate scoring and the controller in
+`taxi/planning/`. See [ARCHITECTURE-v2.md](ARCHITECTURE-v2.md) for how these fit the three-tier
+target, and [VALIDATION.md](VALIDATION.md) for the verified state of the current tree.
 
 ## Access and deployment
 
